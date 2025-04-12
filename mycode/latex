@@ -1,0 +1,172 @@
+\documentclass[10pt,twocolumn]{article}
+\usepackage[a4paper,margin=0.75in]{geometry}
+\usepackage{times}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{graphicx}
+
+% Reduce spacing before and after sections
+\titlespacing*{\section}{0pt}{*1.5}{*0.8}
+\titlespacing*{\subsection}{0pt}{*1.2}{*0.6}
+\setlength{\columnsep}{0.25in}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Jan-May 2025}
+\lhead{CS6024 Project Proposal}
+\rfoot{\thepage}
+
+\title{\vspace{-1cm}LexicHash: Sequence Similarity Estimation via Lexicographic Comparison of Hashes}
+\author{Shreyas Bargale (CS22B016), Anumita P (BE22B004)}
+\date{}
+
+\begin{document}
+\maketitle
+\section{Introduction}
+Pairwise sequence alignment is a method used to compare two genetic sequences (DNA, RNA, or proteins), by arranging them to highlight similarities. It involves aligning $n$ sequences by comparing each pair independently, rather than aligning all sequences simultaneously. It helps in understanding evolutionary history, predicting structure and function, and genome assembly from small fragments.
+
+\section{Biological Problem}
+Third-generation sequencing platforms generate long-read sequences, simplifying genome assembly. However, they have higher error rates, requiring computational correction methods.
+
+\section{Computational Problem}
+Pairwise sequence alignments are computationally expensive since most reads do not overlap. Further there is a trade-off in k-mer selection. Large k-mers reduce false matches but are error-prone. Smaller k-mers improve recall but increase false positives.
+
+\subsection{Approach Overview}
+\begin{itemize}[leftmargin=*]
+In real-word sequence analysis, especially with next generation sequencing techniques which produce long noisy reads, it is too slow and computationally expensive to do pairwise sequence alignment for all possible pairs. LexicHash overcomes this by following a 2-step strategy. This is similar to using a metal detector to first quickly scan a beach (step1) and then digging only where the detector beeps(step 2).First, pairwise similarity scores are approximately estimated using hashing based methods. Then, precise alignment methods are applied to the pairs with significant similarity scores filtered from step1. For the given sequence, all possible k-mers are generated and passed through a hash function. From these the minimum hash value is selected and it represents the sequence for that hash function. Lexic hash uses many hash functions and compares their minimum hash values.  Each mask imposes a different lexicographic order on k-mers. A sketch consists of all minimum lexicographich k-mers under each mask. To estimate the similarity between two sequences, their sketches are compared. Rather than checking for exact matches between hashes, LexicHash compares similarity between the hash values using prefix match length. This is the number of leading bits two hashes have in common. XOR operation is used to compute this. The longer the common prefix the more similar the sequences likely are. This introduces a third possibility of not just match/not match but how strong the match is. 
+
+LexicHash not only improves the estimation of sequence similarity, but also how it computes this efficiently by the use of prefix trees/tries. Each level represents 1 nucleotide or 2 bits. It avoids usual slow pairwise comparisions of O($n^2$) and reduces the overall complexity to O(n) . Sequences that have a common prefix are grouped together. This means common parts are stored and computed only once. Through a prefix tree, LexicHash can find all top T-similar pairs without comparing all pairs.
+
+Another important challenge that LexicHash sidesteps is the k-mer trade-off problem described above. LexicHash does not use a fixed k-mer size but sets a maximum k-mer length $K_{max}$. This allows a balance between precision and recall. By using a bottom-up strategy in its prefix tree LexicHash navigates from the bottom(leaf nodes) to the roots. This allows capturing the longest matching prefixes first and to prune away comparisons early when there is no significant match.  
+
+\end{itemize}
+
+\subsection{Final Problem}
+\textbf{Objective:}
+\begin{itemize}[leftmargin=*]
+Compute sequence similarity without full pairwise alignment using lexicographic hashes for sketching and prefix trees.
+\end{itemize}
+\textbf{Input:}
+\begin{itemize}[leftmargin=*]
+  \item DNA sequences $s_1$ and $s_2$
+  \item Max $k$-mer length $k_{max}$
+  \item Set of lexicographic masks
+\end{itemize}
+\textbf{Output:}
+\begin{itemize}[leftmargin=*]
+  \item Top $T$ similar $k$-mer pairs based on prefix match length
+  \item Probability estimate of significant alignment
+\end{itemize}
+
+\section{Related Works \& Research Gap}
+
+\subsection{Related Works}
+
+\textbf{Smith-Waterman Algorithm} and \textbf{Needleman-Wunsch Algorithm} find the best local and global alignment between 2 sequences. They use dynamic programming to fill a matrix using recurrence relations to score matches, mismatches and gaps. These are mathematically proven to find the best (highest-scoring) alignment of 2 sequences. Softwares such as EMBOSS and the "Biostrings" in R library are based on these algorithms. However, these methods which are guaanteed to find the best alignment are exhaustive. 2 sequences of length 150 requires ~$10^8$ alignments. (The estimated number of atoms in the Universe is $10^7$!).
+
+\textbf{BLAST(Basic Local Alignment Search Tool)} developed in 1997 uses heuristics to outperform the speed of the current conventional methods. It begins with a query sequence that is matched against sequence databases specified by the user.  This query sequence is broken down into smaller subsequences called words or seeds. It then searches the database for matches based on a scoring matrix. Once matches are found, it extends then in both directions to form high-scoring segment pairs. These extensions continue till the score<threshold. However, BLAST is slow and memory intensive for large databases such as GenBank. Further the seed length influences both speed and sensitivity, where a smaller word means better sensitivity but slows down the search. Larger word size leads to a faster search but weak matches maybe missed. More impotantly next generation sequence methods, such as reads from Oxford Nanopore or PacBio  are long and noisy and BLAST performs poorly here.
+
+\textbf{MASH(MinHash Alignment-based Sequence Hashing)}is an algorithm that is used to quickly and approximately estimate the distance between 2 sequences. It represents the sequences as sketches, which is a linear pre-processing step (time it takes to process a sequence and create its sketch is proprotional to the number of bases in the sequence.) The input sequences are broken into overlapping k-mers and then are hashed. Jaccard similarity is then computed between k-mers with  smallest hash values. A mutation-based Mash distance is computed.  However MASH requires exact k-mer matches and fixed length k-mers. This makes it less sensitive to sequencing errors a common problem in next generation sequencing techniques. 
+
+\textbf{LexicHash} builds on this foundation laid by MASH but is more efficient in handling the noisy, error-prone data. This is especially true for the Plasmodium falciparum dataset where MASH performs close to random. As discussed earlier, LexicHash introduces multiple lexicographic hash masks, variable length k-mers and relies on prefix match length to determine the strength of the match, instead of exact matches.
+
+
+\subsection{Research Gaps in LexicHash}
+\begin{itemize}[leftmargin=*]
+  \item No theoretical analysis of error bounds.
+  \item Mask selection is static and could be smarter.
+  \item Memory and speed can be optimized (XOR, SIMD missing).
+  \item Similarity measure is heuristic-based.
+\end{itemize}
+
+\section{Project Objectives}
+\subsection*{Algorithmic Improvements}
+\begin{itemize}[leftmargin=*]
+  \item Weighted masks from ATGC composition.
+  \item Compressed/sparse prefix trees with rolling hashes.
+  \item New similarity score using likelihood ratio tests.
+  \item Explore non-biological applications like plagiarism detection.
+\end{itemize}
+
+\subsection*{C++ Implementation}
+\begin{itemize}[leftmargin=*]
+  \item 2-bit DNA encoding, AVX2/512 SIMD, cache-optimized trees.
+  \item Multi-threaded k-mer processing.
+\end{itemize}
+
+\subsection*{Performance Evaluation}
+\begin{itemize}[leftmargin=*]
+  \item Compare with BLAST, Mash, MinHash.
+  \item Metrics: runtime, memory, precision, recall, error rate.
+  \item Cluster sequences based on similarity scores.
+\end{itemize}
+\section{Preliminary Results}
+\begin{itemize}[leftmargin=*]
+  \item Datasets from original paper downloaded.
+  \item LexicHash GitHub repository cloned and tested with sample input.
+  \item Implemented C++ version of the LexicHash tool following the python source code available. There are multiple ways by which the performance has improved. For now the code has been implemented specifically for \texttt{k\_max <= 32} as a kmer of 32 nucleotides can be encoded inside a single 64 bit integer which gives a lot of speed because of bit-wise operations. Further support for greater \texttt{k\_max} will be considered. We have also not taken into account reverse complement but will be easy to integrate. Given this preliminary assumptions our C++ version has performed really well because of the following reasons:
+  \begin{itemize}
+    \item Implementing in C++ over python gives the advantage that C++ is a compiled language with lot of compile level optimisations available and is a low level language and allows loop unrolling. (Improves tight loops such as sketching process). C++ is statically typed which reduces overhead.
+    \item Compiler flags used: \texttt{g++ -fopenmp lexic\_hash.cpp -o lexichash.exe -O3 -march=native -funroll-loops}
+    \item \texttt{-O3} does inlining, loop unrolling, vectorisation (SIMD) of loops and optimises redundant processing.
+    \item \texttt{-march=native} uses hardware specific instructions to improve performance.
+    \item \texttt{-funroll-loops} makes loops faster.
+    \item \texttt{vector<int>} in the code allocates contiguous memory and avoids python overhead.
+    \item Use of OpenMP and threading for parallelism across various masks. This improves performance by a lot as all masks involve similar work and requires less copying and overhead in C++ compared to python. OpenMP with \texttt{schedule(static)} divides work evenly across the threads reducing overhead.
+    \item The python implementation involved used lot of global variables which might involved thread contention and memory copying. Pass by reference and having data structures such that threads can work on it separately solves this.
+    \item The python code itself is highly efficient with pruning at every step to increase efficiency. All the features of python code have been included in the C++ code and test on the \texttt{NCTC1080\_reads.fasta}.
+    \item The python code base on the github of LexicHash had a major issue. In the pairwise comparison function they have not explicitly typecasted the number of pairs  to int, which is a product of alpha and number of sequences where alpha is a float. So if number of pairs after the product comes out to be a float the algorithm processes all the pairs which is an unintended outcome and defies the major assumption from the paper that we want to check best few overlaps.
+    \item A custom python script was made to test the output of the C++ code. The kmax is 32. The ground truth has sequence numbers of the 2 similar sequences and their score. The script checks if the outcome of the C++ code (seq1,seq2) is present in the ground truth and plots the score of this ground truth to check how well the code captures the high score ground truth pairs.
+    
+  \end{itemize}
+\end{itemize}
+
+\section {Figures}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/cpp1000.png}
+    \caption{Output of 1000 Sequences in C++ (seq1,seq2) pairs when matched from the ground truth (seq1,seq2) score yielded}
+    \label{fig:cpp1000}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/15cpulesscompileroptim.png}
+    \caption{Performance with 15 CPUs and No Compiler Optimisation}
+    \label{fig:15cpu-no-opt}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/compileroptimised.png}
+    \caption{Compiler optimisations as mentioned above(15 CPUs)}
+    \label{fig:15cpu-opt}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/pylexiperf.png}
+    \caption{Performance of the python code with same configurations}
+    \label{fig:pythonoutput}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/fixedcode.jpeg}
+    \caption{After correcting the missing typecast the python code worked as expected.}
+    \label{fig:codefix}
+\end{figure}
+
+
+\section{Timeline}
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Week 1-2:} Implement C++ baseline version.
+  \item \textbf{Week 3-4:} Weighted masks / optimize prefix trees / multi-threading.
+  \item \textbf{Week 5:} Benchmark vs BLAST/Mash.
+  \item \textbf{Week 6:} Final report, GitHub, demo.
+\end{enumerate}
+
+\end{document}
