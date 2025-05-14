@@ -28,6 +28,13 @@ Final results for exponential decay aggregation will be stored as CSV files.
 
 ---
 
+
+
+Testing has been done on outputs and ground truth, present in various directories.  
+Simply run the Python evaluation scripts after placing the results in the appropriate files.
+
+---
+
 Multiscale LexicHash is present in the 'Lexic_Hash1orig' directory and a modified version is present in 'LexicHash1'
 
 Run using:
@@ -36,10 +43,6 @@ Run using:
 python run_module.py --out ../LH_out --fasta data/NCTC1080/NCTC1080_reads.fasta.gz --no_rc
 ```
 
----
-
-Testing has been done on outputs and ground truth, present in various directories.  
-Simply run the Python evaluation scripts after placing the results in the appropriate files.
 
 ---
 
